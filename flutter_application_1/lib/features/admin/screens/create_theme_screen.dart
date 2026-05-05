@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../../main.dart'; // Importa a variável global supabase
+import '../../../main.dart'; 
 
 class CreateThemeScreen extends StatefulWidget {
-  // Parâmetro opcional. Se for passado, a tela se comporta como "Edição" (RF16)
   final Map<String, dynamic>? temaParaEdicao;
 
   const CreateThemeScreen({super.key, this.temaParaEdicao});
@@ -19,7 +18,6 @@ class _CreateThemeScreenState extends State<CreateThemeScreen> {
   
   bool _isLoading = false;
   
-  // Paleta de cores baseada no seu design
   final List<Color> _opcoesCores = [
     const Color(0xFF1E3A8A), // Azul Escuro (Padrão)
     const Color(0xFF4F46E5), // Indigo
@@ -35,31 +33,26 @@ class _CreateThemeScreenState extends State<CreateThemeScreen> {
     super.initState();
     _corSelecionada = _opcoesCores[0]; // Cor inicial padrão
     
-    // Se recebemos um tema para edição (RF16), preenchemos os campos
     if (widget.temaParaEdicao != null) {
       _tituloController.text = widget.temaParaEdicao!['titulo'] ?? '';
       _descricaoController.text = widget.temaParaEdicao!['descricao'] ?? '';
       
-      // Tenta recuperar a cor hexadecimal do banco e aplicar no visual
       if (widget.temaParaEdicao!['cor_hexadecimal'] != null) {
         try {
           String hexString = widget.temaParaEdicao!['cor_hexadecimal'];
           hexString = hexString.replaceAll('#', '0xFF');
           _corSelecionada = Color(int.parse(hexString));
         } catch (e) {
-          // Se falhar o parse, mantém a cor padrão
         }
       }
     }
   }
 
-  // Função que converte a cor do Flutter (Color) para String '#RRGGBB' pro Banco de Dados
   String _colorToHex(Color color) {
     return '#${color.value.toRadixString(16).substring(2, 8).toUpperCase()}';
   }
 
   Future<void> _salvarTema() async {
-    // RF14: Validação Client-side
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
@@ -69,22 +62,17 @@ class _CreateThemeScreenState extends State<CreateThemeScreen> {
         'titulo': _tituloController.text.trim(),
         'descricao': _descricaoController.text.trim(),
         'cor_hexadecimal': _colorToHex(_corSelecionada),
-        // O campo data_criacao é gerado automaticamente pelo banco, ou podemos enviar:
-        // 'data_criacao': DateTime.now().toIso8601String(), se não houver valor default no Postgres.
       };
 
       if (widget.temaParaEdicao == null) {
-        // Fluxo de Criação (Novo Tema)
         await supabase.from('temas').insert(temaData);
       } else {
-        // Fluxo de Atualização (Edição)
         await supabase
             .from('temas')
             .update(temaData)
             .eq('id_temas', widget.temaParaEdicao!['id_temas']);
       }
 
-      // RNF10: Retorna "true" para a tela anterior saber que deve recarregar a lista
       if (mounted) {
         Navigator.pop(context, true);
         ScaffoldMessenger.of(context).showSnackBar(
@@ -144,7 +132,6 @@ class _CreateThemeScreenState extends State<CreateThemeScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Breadcrumb de navegação
             Row(
               children: [
                 const Text('Temas de Segurança', style: TextStyle(color: Colors.grey)),
@@ -162,7 +149,6 @@ class _CreateThemeScreenState extends State<CreateThemeScreen> {
             ),
             const SizedBox(height: 24),
 
-            // Card Principal do Formulário
             Container(
               padding: const EdgeInsets.all(24.0),
               decoration: BoxDecoration(
@@ -241,7 +227,6 @@ class _CreateThemeScreenState extends State<CreateThemeScreen> {
                     const Text('PRÉ-VISUALIZAÇÃO EM TEMPO REAL', style: TextStyle(color: Colors.grey, fontSize: 12)),
                     const SizedBox(height: 12),
                     
-                    // Container de Pré-visualização com atualização via setState
                     Container(
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(vertical: 32),
@@ -280,7 +265,6 @@ class _CreateThemeScreenState extends State<CreateThemeScreen> {
                     ),
                     const SizedBox(height: 32),
 
-                    // Botões de Ação
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton.icon(

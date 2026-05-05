@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../main.dart';
 import 'create_question_screen.dart';
-import 'create_theme_screen.dart'; // A tela de "Configurar Tema" que vamos criar em seguida
+import 'create_theme_screen.dart';
+import '../../../shared/widgets/app_text.dart';
+import '../../../shared/widgets/theme_card.dart';
 
 class AdminDashboardScreen extends StatefulWidget {
   const AdminDashboardScreen({super.key});
@@ -12,7 +14,7 @@ class AdminDashboardScreen extends StatefulWidget {
 }
 
 class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
-  int _selectedIndex = 1; // 1 = Tab 'Temas' ativa (conforme o design)
+  int _selectedIndex = 1; 
   bool _isLoading = true;
   bool _isAdmin = false;
   List<Map<String, dynamic>> _temas = [];
@@ -23,12 +25,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     _checkAdminAndLoadData();
   }
 
-  // RF03: Controle de Acesso
   Future<void> _checkAdminAndLoadData() async {
     try {
       final user = supabase.auth.currentUser;
       if (user == null) {
-        // Redirecionar para login se não houver usuário logado (precaução extra)
+        // Redirecionar para login se não houver usuário logado 
         if (mounted) Navigator.pushReplacementNamed(context, '/login');
         return;
       }
@@ -46,7 +47,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         });
         _loadTemas(); // Carrega os temas apenas se for administrador
       } else {
-        // Fluxo Alternativo UC05: Tentativa de acesso indevido
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -54,7 +54,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
               backgroundColor: Colors.red,
             ),
           );
-          Navigator.pushReplacementNamed(context, '/home'); // Redireciona para área do aluno
+          Navigator.pushReplacementNamed(context, '/home'); 
         }
       }
     } catch (e) {
@@ -66,11 +66,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     }
   }
 
-  // UC02 / UC06: Consultar Temas
   Future<void> _loadTemas() async {
     try {
-      // Usando uma query para buscar os temas e a contagem de perguntas (Aulas/Perguntas)
-      // A query abaixo faz um count na tabela perguntas vinculado ao id do tema.
       final response = await supabase.from('temas').select('''
         id_temas,
         titulo,
@@ -94,8 +91,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       }
     }
   }
-
-  // RF07: Regra de Exclusão e Confirmação (RF15)
   Future<void> _deleteTema(int idTema) async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -137,7 +132,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Se não terminou de carregar a verificação de admin, mostra a tela de carregamento.
     if (_isLoading) {
       return const Scaffold(
         backgroundColor: Color(0xFFF8FAFC),
@@ -145,7 +139,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       );
     }
     
-    // Proteção extra de renderização: se chegou aqui e não for admin, exibe tela em branco.
     if (!_isAdmin) return const Scaffold();
 
     return Scaffold(
@@ -155,10 +148,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         elevation: 0,
         leading: IconButton(
           icon: const Icon(Icons.menu, color: Color(0xFF1E3A8A)),
-          onPressed: () {}, // TODO: Abrir Drawer se necessário
+          onPressed: () {}, 
         ),
         title: const Text(
-          'Security Quizz', // Nome oficial definido
+          'Security Quizz', 
           style: TextStyle(color: Color(0xFF1E3A8A), fontWeight: FontWeight.bold),
         ),
         actions: [
@@ -191,7 +184,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             ),
             const SizedBox(height: 24),
             
-            // RNF09: Renderização Eficiente de Listas
             Expanded(
               child: _temas.isEmpty
                   ? const Center(child: Text('Nenhum tema cadastrado.'))
@@ -199,19 +191,17 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                       itemCount: _temas.length,
                       itemBuilder: (context, index) {
                         final tema = _temas[index];
-                        // Processa a contagem de perguntas da subquery
                         int qtdPerguntas = 0;
                         if(tema['perguntas'] != null && (tema['perguntas'] as List).isNotEmpty) {
                            qtdPerguntas = tema['perguntas'][0]['count'] ?? 0;
                         }
-                        
-                        // Processa a cor_hexadecimal
+
                         Color accentColor = Colors.blue;
                         if(tema['cor_hexadecimal'] != null && tema['cor_hexadecimal'].toString().isNotEmpty) {
                            try {
                              accentColor = Color(int.parse(tema['cor_hexadecimal'].replaceAll('#', '0xFF')));
                            } catch (e) {
-                             accentColor = Colors.blue; // Fallback
+                             accentColor = Colors.blue; 
                            }
                         }
 
@@ -223,17 +213,14 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         ),
       ),
       
-      // Botão Flutuante de Criação (+) - Conforme o design (sobrepondo a bottom bar visualmente)
       floatingActionButton: FloatingActionButton(
         backgroundColor: const Color(0xFF0F172A), // Azul bem escuro/preto do design
         child: const Icon(Icons.add, color: Colors.white, size: 28),
         onPressed: () async {
-          // Navega para a tela de Configurar Tema e aguarda o retorno
           final result = await Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => const CreateThemeScreen()),
           );
-          // Se um tema foi salvo, recarrega a lista
           if(result == true) {
             _loadTemas();
           }
@@ -241,7 +228,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endDocked,
       
-      // Bottom Navigation Bar baseada no design
       bottomNavigationBar: BottomAppBar(
         shape: const CircularNotchedRectangle(),
         notchMargin: 8.0,
@@ -249,10 +235,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: [
             _buildNavIcon(0, Icons.dashboard_outlined, 'Painel'),
-            _buildNavIcon(1, Icons.security_outlined, 'Temas'), // Aba ativa
+            _buildNavIcon(1, Icons.security_outlined, 'Temas'), 
             _buildNavIcon(2, Icons.quiz_outlined, 'Perguntas'),
             _buildNavIcon(3, Icons.history_outlined, 'Registros'),
-            const SizedBox(width: 48), // Espaço para o FloatingActionButton
+            const SizedBox(width: 48), 
           ],
         ),
       ),
@@ -276,22 +262,19 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                // Ícone com a cor de acento do tema
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
                     color: accentColor.withOpacity(0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
-                  child: Icon(Icons.shield_outlined, color: accentColor), // Ícone genérico, pode evoluir depois
+                  child: Icon(Icons.shield_outlined, color: accentColor),
                 ),
-                // Ações de Edição e Exclusão (UC06)
                 Row(
                   children: [
                     IconButton(
                       icon: const Icon(Icons.edit_outlined, color: Colors.indigo),
                       onPressed: () async {
-                        // RF16: Edição com Preenchimento Prévio trafegando o estado
                         final result = await Navigator.push(
                           context,
                           MaterialPageRoute(
@@ -337,7 +320,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                     style: TextStyle(color: Colors.blue, fontSize: 12),
                   ),
                 ),
-                // Contagem de Perguntas (solicitada)
                 Text(
                   '$qtdPerguntas Perguntas',
                   style: const TextStyle(color: Colors.grey, fontSize: 14),
@@ -356,15 +338,12 @@ Widget _buildNavIcon(int index, IconData icon, String label) {
     return InkWell(
       onTap: () async {
         if (index == 2) {
-          // Se clicar na aba "Perguntas", abre a tela de criação
           final result = await Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => const CreateQuestionScreen()),
           );
-          // Atualiza o painel caso uma nova pergunta tenha sido salva
           if (result == true) _loadTemas();
         } else {
-          // Para as outras abas, apenas muda a seleção visual por enquanto
           setState(() => _selectedIndex = index);
         }
       },

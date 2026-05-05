@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../main.dart';
 import '/features/admin/screens/admin_dashboard_screen.dart';
-import 'signup_screen.dart'; // Importa a tela de cadastro
+import 'signup_screen.dart'; 
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -18,9 +18,8 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
   
   bool _isLoading = false;
-  String? _errorMessage; // Variável para controlar o erro inline do design
+  String? _errorMessage; 
 
-  // Cores extraídas do seu design
   final Color _primaryBlue = const Color(0xFF1E3A8A);
 
 Future<void> _signIn() async {
@@ -41,7 +40,6 @@ Future<void> _signIn() async {
       final user = supabase.auth.currentUser;
       
       if (user != null && mounted) {
-        // Consulta se o usuário logado é administrador
         final response = await supabase
             .from('perfil')
             .select('is_admin')
@@ -58,7 +56,6 @@ Future<void> _signIn() async {
             ),
           );
 
-          // Redirecionamento Inteligente (RF03)
           if (isAdmin) {
             Navigator.pushReplacement(
               context,
@@ -106,7 +103,6 @@ Future<void> _signIn() async {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Logo Placeholder (Baseado na imagem do Login)
               Container(
                 width: 120,
                 height: 120,
@@ -137,7 +133,6 @@ Future<void> _signIn() async {
               ),
               const SizedBox(height: 32),
 
-              // Card do Formulário
               Container(
                 padding: const EdgeInsets.all(24.0),
                 decoration: BoxDecoration(
@@ -189,7 +184,6 @@ Future<void> _signIn() async {
                         },
                       ),
                       
-                      // Mensagem de erro inline do design
                       if (_errorMessage != null) ...[
                         const SizedBox(height: 12),
                         Row(
@@ -237,7 +231,6 @@ Future<void> _signIn() async {
 
                       TextButton(
                         onPressed: () {
-                          // TODO: Navegar para recuperação de senha
                         },
                         child: Text(
                           'Esqueceu sua senha?',
@@ -254,7 +247,6 @@ Future<void> _signIn() async {
               ),
               const SizedBox(height: 24),
 
-              // Rodapé fora do card principal
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -287,7 +279,6 @@ Future<void> _signIn() async {
     );
   }
 
-  // Helpers visuais (idênticos ao SignupScreen para consistência)
   Widget _buildLabel(String text) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8.0),
@@ -320,7 +311,7 @@ Future<void> _signIn() async {
         borderRadius: BorderRadius.circular(8),
         borderSide: BorderSide(color: _primaryBlue, width: 2),
       ),
-      errorStyle: const TextStyle(height: 0), // Oculta o erro padrão para usar o inline
+      errorStyle: const TextStyle(height: 0), 
     );
   }
 }

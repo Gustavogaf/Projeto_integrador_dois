@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../../main.dart'; // Importa a variável global do Supabase
-
+import '../../../main.dart'; 
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
 
@@ -18,9 +17,8 @@ class _SignupScreenState extends State<SignupScreen> {
   
   bool _isLoading = false;
 
-  // Cores extraídas do seu design
-  final Color _primaryBlue = const Color(0xFF1E3A8A); // Azul do botão e título
-  final Color _successGreen = const Color(0xFF2E7D32); // Verde do SnackBar
+  final Color _primaryBlue = const Color(0xFF1E3A8A); 
+  final Color _successGreen = const Color(0xFF2E7D32); 
 
   Future<void> _signUp() async {
     if (!_formKey.currentState!.validate()) return;
@@ -28,7 +26,6 @@ class _SignupScreenState extends State<SignupScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // 1. Cria o usuário no módulo de Auth do Supabase
       final AuthResponse res = await supabase.auth.signUp(
         email: _emailController.text.trim(),
         password: _passwordController.text.trim(),
@@ -37,15 +34,13 @@ class _SignupScreenState extends State<SignupScreen> {
       final User? user = res.user;
 
       if (user != null) {
-        // 2. Insere os dados na tabela pública 'perfil' conforme seu diagrama ER
         await supabase.from('perfil').insert({
-          'id_user': user.id, // O ideal é que o id_perfil seja UUID/String para bater com o Auth, ou gerado via serial
+          'id_user': user.id,
           'nome': _nameController.text.trim(),
           'is_admin': false,
         });
       }
 
-      // Feedback Visual de Sucesso idêntico ao design (RNF10)
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -73,7 +68,6 @@ class _SignupScreenState extends State<SignupScreen> {
           ),
         );
         
-        // Retorna para a tela de Login após o sucesso
         Navigator.pop(context);
       }
     } on AuthException catch (error) {
@@ -109,7 +103,6 @@ class _SignupScreenState extends State<SignupScreen> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Logo Placeholder (Baseado na sua imagem)
               Container(
                 width: 100,
                 height: 100,
@@ -240,7 +233,6 @@ class _SignupScreenState extends State<SignupScreen> {
 
                       TextButton(
                         onPressed: () {
-                          // Retorna para a tela de Login
                           Navigator.pop(context);
                         },
                         child: Text(
@@ -263,7 +255,6 @@ class _SignupScreenState extends State<SignupScreen> {
     );
   }
 
-  // Helper para construir as labels acima dos inputs
   Widget _buildLabel(String text) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8.0),
@@ -278,7 +269,6 @@ class _SignupScreenState extends State<SignupScreen> {
     );
   }
 
-  // Helper para padronizar o visual dos campos de texto
   InputDecoration _inputDecoration({required String hint, required IconData icon}) {
     return InputDecoration(
       hintText: hint,

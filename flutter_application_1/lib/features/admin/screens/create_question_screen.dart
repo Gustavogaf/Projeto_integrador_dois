@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../main.dart';
+import '../../../shared/widgets/alternativa_item.dart';
 
 class CreateQuestionScreen extends StatefulWidget {
-  // Removemos o temaId obrigatório do construtor
   const CreateQuestionScreen({super.key});
 
   @override
@@ -18,7 +18,6 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
   int _selectedIndex = -1;
   bool _isLoading = false;
   
-  // Novas variáveis para o Dropdown de Temas
   List<Map<String, dynamic>> _temasCadastrados = [];
   int? _selectedTemaId;
 
@@ -27,13 +26,12 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
   @override
   void initState() {
     super.initState();
-    _carregarTemas(); // Busca os temas para preencher o Dropdown
+    _carregarTemas();
     _addAlternativa();
     _addAlternativa();
     _addAlternativa();
   }
 
-  // Função que busca os temas no Supabase
   Future<void> _carregarTemas() async {
     try {
       final response = await supabase.from('temas').select('id_temas, titulo');
@@ -86,7 +84,6 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
     setState(() => _isLoading = true);
 
     try {
-      // 1. Insere a pergunta com o ID do Tema selecionado no Dropdown
       final perguntaResponse = await supabase.from('perguntas').insert({
         'id_tema': _selectedTemaId, // Pega o ID do Dropdown
         'enunciado': _enunciadoController.text.trim(),
@@ -95,7 +92,6 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
 
       final int idPerguntaGerado = perguntaResponse['id_pergunta'];
 
-      // 2. Insere as alternativas
       final List<Map<String, dynamic>> alternativasData = [];
       for (int i = 0; i < _altControllers.length; i++) {
         alternativasData.add({
@@ -189,7 +185,6 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
               ),
               const SizedBox(height: 24),
 
-              // Card do Enunciado
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
@@ -225,7 +220,6 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
               ),
               const SizedBox(height: 32),
 
-              // Seção de Alternativas
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -239,12 +233,21 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Lista Dinâmica
               ListView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
                 itemCount: _altControllers.length,
-                itemBuilder: (context, index) => _buildAlternativaItem(index),
+                itemBuilder: (context, index) {
+                  return AlternativaItem(
+                    index: index,
+                    isSelected: _selectedIndex == index,
+                    controller: _altControllers[index],
+                    onTapRadio: () => setState(() => _selectedIndex = index),
+                    onRemove: _altControllers.length > 2 
+                        ? () => _removeAlternativa(index) 
+                        : null,
+                  );
+                },
               ),
 
               InkWell(
@@ -270,7 +273,6 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
               ),
               const SizedBox(height: 40),
 
-              // Botões Finais
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
@@ -292,76 +294,6 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
             ],
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildAlternativaItem(int index) {
-    final isSelected = _selectedIndex == index;
-    final letraOpcao = String.fromCharCode(65 + index);
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isSelected ? _primaryBlue : Colors.grey.withOpacity(0.3),
-          width: isSelected ? 2 : 1,
-        ),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          GestureDetector(
-            onTap: () => setState(() => _selectedIndex = index),
-            child: Container(
-              margin: const EdgeInsets.only(top: 4, right: 16),
-              width: 24,
-              height: 24,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                border: Border.all(color: isSelected ? _primaryBlue : Colors.grey, width: 2),
-              ),
-              child: isSelected
-                  ? Center(child: Container(width: 12, height: 12, decoration: BoxDecoration(color: _primaryBlue, shape: BoxShape.circle)))
-                  : null,
-            ),
-          ),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      isSelected ? 'Opção $letraOpcao (Correta)' : 'Opção $letraOpcao',
-                      style: TextStyle(color: isSelected ? _primaryBlue : Colors.black87, fontWeight: FontWeight.w500),
-                    ),
-                    if (_altControllers.length > 2)
-                      InkWell(
-                        onTap: () => _removeAlternativa(index),
-                        child: const Icon(Icons.close, size: 18, color: Colors.grey),
-                      ),
-                  ],
-                ),
-                TextFormField(
-                  controller: _altControllers[index],
-                  decoration: const InputDecoration(
-                    hintText: 'Insira o texto da alternativa...',
-                    hintStyle: TextStyle(color: Colors.grey, fontSize: 14),
-                    border: InputBorder.none,
-                    isDense: true,
-                    contentPadding: EdgeInsets.only(top: 8),
-                  ),
-                  style: const TextStyle(fontSize: 14),
-                ),
-              ],
-            ),
-          ),
-        ],
       ),
     );
   }
