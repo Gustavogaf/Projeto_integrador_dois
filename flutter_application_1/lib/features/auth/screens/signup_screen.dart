@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../../main.dart'; 
+import 'package:provider/provider.dart';
+import '../../../viewmodels/auth_viewmodel.dart';
+
 class SignupScreen extends StatefulWidget {
   const SignupScreen({super.key});
 
@@ -14,8 +15,6 @@ class _SignupScreenState extends State<SignupScreen> {
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  
-  bool _isLoading = false;
 
   final Color _primaryBlue = const Color(0xFF1E3A8A); 
   final Color _successGreen = const Color(0xFF2E7D32); 
@@ -23,59 +22,44 @@ class _SignupScreenState extends State<SignupScreen> {
   Future<void> _signUp() async {
     if (!_formKey.currentState!.validate()) return;
 
-    setState(() => _isLoading = true);
+    final viewModel = context.read<AuthViewModel>();
 
-    try {
-      final AuthResponse res = await supabase.auth.signUp(
-        email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
-      );
+    final success = await viewModel.signUp(
+      _emailController.text.trim(),
+      _passwordController.text.trim(),
+      _nameController.text.trim(),
+    );
 
-      final User? user = res.user;
-
-      if (user != null) {
-        await supabase.from('perfil').insert({
-          'id_user': user.id,
-          'nome': _nameController.text.trim(),
-          'is_admin': false,
-        });
-      }
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.check_circle_outline, color: Colors.white),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Text(
-                    'Cadastro realizado com sucesso!',
-                    style: TextStyle(color: Colors.white, fontSize: 16),
-                  ),
+    if (success && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.check_circle_outline, color: Colors.white),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text(
+                  'Cadastro realizado com sucesso!',
+                  style: TextStyle(color: Colors.white, fontSize: 16),
                 ),
-                IconButton(
-                  icon: const Icon(Icons.close, color: Colors.white),
-                  onPressed: () => ScaffoldMessenger.of(context).hideCurrentSnackBar(),
-                ),
-              ],
-            ),
-            backgroundColor: _successGreen,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            duration: const Duration(seconds: 4),
-            padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+              ),
+              IconButton(
+                icon: const Icon(Icons.close, color: Colors.white),
+                onPressed: () => ScaffoldMessenger.of(context).hideCurrentSnackBar(),
+              ),
+            ],
           ),
-        );
-        
-        Navigator.pop(context);
-      }
-    } on AuthException catch (error) {
-      if (mounted) _showErrorSnackBar(error.message);
-    } catch (error) {
-      if (mounted) _showErrorSnackBar('Ocorreu um erro inesperado.');
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
+          backgroundColor: _successGreen,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          duration: const Duration(seconds: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+        ),
+      );
+      
+      Navigator.pop(context);
+    } else if (mounted && viewModel.errorMessage != null) {
+      _showErrorSnackBar(viewModel.errorMessage!);
     }
   }
 
@@ -95,8 +79,10 @@ class _SignupScreenState extends State<SignupScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final authState = context.watch<AuthViewModel>();
+
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC), // Fundo levemente cinza/azulado
+      backgroundColor: const Color(0xFFF8FAFC),
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(24.0),
@@ -132,7 +118,6 @@ class _SignupScreenState extends State<SignupScreen> {
               ),
               const SizedBox(height: 32),
 
-              // Card do Formulário
               Container(
                 padding: const EdgeInsets.all(24.0),
                 decoration: BoxDecoration(
@@ -200,7 +185,7 @@ class _SignupScreenState extends State<SignupScreen> {
                       const SizedBox(height: 32),
 
                       ElevatedButton(
-                        onPressed: _isLoading ? null : _signUp,
+                        onPressed: authState.isLoading ? null : _signUp,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: _primaryBlue,
                           padding: const EdgeInsets.symmetric(vertical: 16),
@@ -208,7 +193,7 @@ class _SignupScreenState extends State<SignupScreen> {
                             borderRadius: BorderRadius.circular(8),
                           ),
                         ),
-                        child: _isLoading
+                        child: authState.isLoading
                             ? const SizedBox(
                                 height: 20,
                                 width: 20,

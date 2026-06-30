@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../../main.dart'; 
+import 'package:provider/provider.dart';
+import '../../../models/tema_model.dart';
+import '../../../viewmodels/create_theme_viewmodel.dart';
 
 class CreateThemeScreen extends StatefulWidget {
-  final Map<String, dynamic>? temaParaEdicao;
+  final TemaModel? temaParaEdicao;
 
   const CreateThemeScreen({super.key, this.temaParaEdicao});
 
@@ -15,8 +16,6 @@ class _CreateThemeScreenState extends State<CreateThemeScreen> {
   final _formKey = GlobalKey<FormState>();
   final _tituloController = TextEditingController();
   final _descricaoController = TextEditingController();
-  
-  bool _isLoading = false;
   
   final List<Color> _opcoesCores = [
     const Color(0xFF1E3A8A), // Azul Escuro (Padrão)
@@ -31,18 +30,19 @@ class _CreateThemeScreenState extends State<CreateThemeScreen> {
   @override
   void initState() {
     super.initState();
-    _corSelecionada = _opcoesCores[0]; // Cor inicial padrão
+    _corSelecionada = _opcoesCores[0];
     
     if (widget.temaParaEdicao != null) {
-      _tituloController.text = widget.temaParaEdicao!['titulo'] ?? '';
-      _descricaoController.text = widget.temaParaEdicao!['descricao'] ?? '';
+      _tituloController.text = widget.temaParaEdicao!.titulo;
+      _descricaoController.text = widget.temaParaEdicao!.descricao;
       
-      if (widget.temaParaEdicao!['cor_hexadecimal'] != null) {
+      if (widget.temaParaEdicao!.corHexadecimal.isNotEmpty) {
         try {
-          String hexString = widget.temaParaEdicao!['cor_hexadecimal'];
+          String hexString = widget.temaParaEdicao!.corHexadecimal;
           hexString = hexString.replaceAll('#', '0xFF');
           _corSelecionada = Color(int.parse(hexString));
         } catch (e) {
+          // Mantém a cor padrão se falhar o parse
         }
       }
     }
@@ -55,25 +55,18 @@ class _CreateThemeScreenState extends State<CreateThemeScreen> {
   Future<void> _salvarTema() async {
     if (!_formKey.currentState!.validate()) return;
 
-    setState(() => _isLoading = true);
+    final viewModel = context.read<CreateThemeViewModel>();
 
-    try {
-      final temaData = {
-        'titulo': _tituloController.text.trim(),
-        'descricao': _descricaoController.text.trim(),
-        'cor_hexadecimal': _colorToHex(_corSelecionada),
-      };
 
-      if (widget.temaParaEdicao == null) {
-        await supabase.from('temas').insert(temaData);
-      } else {
-        await supabase
-            .from('temas')
-            .update(temaData)
-            .eq('id_temas', widget.temaParaEdicao!['id_temas']);
-      }
+    final success = await viewModel.salvarTema(
+      idTema: widget.temaParaEdicao?.id, 
+      titulo: _tituloController.text.trim(),
+      descricao: _descricaoController.text.trim(),
+      corHexadecimal: _colorToHex(_corSelecionada),
+    );
 
-      if (mounted) {
+    if (mounted) {
+      if (success) {
         Navigator.pop(context, true);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -81,18 +74,14 @@ class _CreateThemeScreenState extends State<CreateThemeScreen> {
             backgroundColor: Colors.green,
           ),
         );
-      }
-    } catch (e) {
-      if (mounted) {
+      } else if (viewModel.errorMessage != null) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Erro ao salvar o tema. Tente novamente.'),
+          SnackBar(
+            content: Text(viewModel.errorMessage!),
             backgroundColor: Colors.red,
           ),
         );
       }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -106,6 +95,8 @@ class _CreateThemeScreenState extends State<CreateThemeScreen> {
   @override
   Widget build(BuildContext context) {
     final isEditing = widget.temaParaEdicao != null;
+    
+    final themeState = context.watch<CreateThemeViewModel>();
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
@@ -143,9 +134,9 @@ class _CreateThemeScreenState extends State<CreateThemeScreen> {
               ],
             ),
             const SizedBox(height: 8),
-            Text(
+            const Text(
               'Configurar Tema',
-              style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
+              style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
             ),
             const SizedBox(height: 24),
 
@@ -245,11 +236,12 @@ class _CreateThemeScreenState extends State<CreateThemeScreen> {
                         children: [
                           Container(
                             width: 40,
-                            height: 4,
+                            height: 40, 
                             decoration: BoxDecoration(
                               color: _corSelecionada,
-                              borderRadius: BorderRadius.circular(2),
+                              borderRadius: BorderRadius.circular(8),
                             ),
+                            child: const Icon(Icons.shield_outlined, color: Colors.white),
                           ),
                           const SizedBox(height: 12),
                           Text(
@@ -268,17 +260,17 @@ class _CreateThemeScreenState extends State<CreateThemeScreen> {
                     SizedBox(
                       width: double.infinity,
                       child: ElevatedButton.icon(
-                        onPressed: _isLoading ? null : _salvarTema,
+                        onPressed: themeState.isLoading ? null : _salvarTema,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF0F172A), // Cor escura do botão de salvar
+                          backgroundColor: const Color(0xFF0F172A),
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                         ),
-                        icon: _isLoading
+                        icon: themeState.isLoading
                             ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
                             : const Icon(Icons.save_outlined, color: Colors.white),
                         label: Text(
-                          _isLoading ? 'Salvando...' : 'Salvar Tema',
+                          themeState.isLoading ? 'Salvando...' : 'Salvar Tema',
                           style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
                         ),
                       ),
@@ -287,7 +279,7 @@ class _CreateThemeScreenState extends State<CreateThemeScreen> {
                     SizedBox(
                       width: double.infinity,
                       child: OutlinedButton(
-                        onPressed: _isLoading ? null : () => Navigator.pop(context),
+                        onPressed: themeState.isLoading ? null : () => Navigator.pop(context),
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           side: const BorderSide(color: Colors.grey),

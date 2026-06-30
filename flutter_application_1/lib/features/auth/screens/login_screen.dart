@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../../main.dart';
+import 'package:provider/provider.dart';
+import '../../../viewmodels/auth_viewmodel.dart';
 import '/features/admin/screens/admin_dashboard_screen.dart';
+import '../../student/screens/student_home_screen.dart';
 import 'signup_screen.dart'; 
 
 class LoginScreen extends StatefulWidget {
@@ -17,72 +18,37 @@ class _LoginScreenState extends State<LoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   
-  bool _isLoading = false;
-  String? _errorMessage; 
-
   final Color _primaryBlue = const Color(0xFF1E3A8A);
 
-Future<void> _signIn() async {
-    if (_errorMessage != null) {
-      setState(() => _errorMessage = null);
-    }
-
+  Future<void> _signIn() async {
     if (!_formKey.currentState!.validate()) return;
 
-    setState(() => _isLoading = true);
+    final viewModel = context.read<AuthViewModel>();
 
-    try {
-      await supabase.auth.signInWithPassword(
-        email: _emailController.text.trim(),
-        password: _passwordController.text.trim(),
+    final success = await viewModel.signIn(
+      _emailController.text.trim(),
+      _passwordController.text.trim(),
+    );
+
+    if (success && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Login realizado com sucesso!'),
+          backgroundColor: Colors.green,
+        ),
       );
-      
-      final user = supabase.auth.currentUser;
-      
-      if (user != null && mounted) {
-        final response = await supabase
-            .from('perfil')
-            .select('is_admin')
-            .eq('id_user', user.id)
-            .single();
 
-        final isAdmin = response['is_admin'] == true;
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Login realizado com sucesso!'),
-              backgroundColor: Colors.green,
-            ),
-          );
-
-          if (isAdmin) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => const AdminDashboardScreen()),
-            );
-          } else {
-           // Navigator.pushReplacement(
-           //   context,
-           //   MaterialPageRoute(builder: (context) => const HomeScreen()),
-           // );
-          }
-        }
+      if (viewModel.isAdmin) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const AdminDashboardScreen()),
+        );
+      } else {
+          Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(builder: (context) => const StudentHomeScreen()),
+        );
       }
-    } on AuthException catch (_) {
-      if (mounted) {
-        setState(() {
-          _errorMessage = 'E-mail ou senha incorretos';
-        });
-      }
-    } catch (error) {
-      if (mounted) {
-        setState(() {
-          _errorMessage = 'Ocorreu um erro inesperado. Tente novamente.';
-        });
-      }
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -95,6 +61,8 @@ Future<void> _signIn() async {
 
   @override
   Widget build(BuildContext context) {
+    final authState = context.watch<AuthViewModel>();
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       body: Center(
@@ -184,14 +152,14 @@ Future<void> _signIn() async {
                         },
                       ),
                       
-                      if (_errorMessage != null) ...[
+                      if (authState.errorMessage != null) ...[
                         const SizedBox(height: 12),
                         Row(
                           children: [
                             const Icon(Icons.error_outline, color: Colors.red, size: 16),
                             const SizedBox(width: 8),
                             Text(
-                              _errorMessage!,
+                              authState.errorMessage!,
                               style: const TextStyle(color: Colors.red, fontSize: 14),
                             ),
                           ],
@@ -201,7 +169,7 @@ Future<void> _signIn() async {
                       ],
 
                       ElevatedButton(
-                        onPressed: _isLoading ? null : _signIn,
+                        onPressed: authState.isLoading ? null : _signIn,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: _primaryBlue,
                           padding: const EdgeInsets.symmetric(vertical: 16),
@@ -209,7 +177,7 @@ Future<void> _signIn() async {
                             borderRadius: BorderRadius.circular(8),
                           ),
                         ),
-                        child: _isLoading
+                        child: authState.isLoading
                             ? const SizedBox(
                                 height: 20,
                                 width: 20,

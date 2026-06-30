@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
-import '../../../main.dart';
+import 'package:provider/provider.dart';
 import '../../../shared/widgets/alternativa_item.dart';
+import '../../../viewmodels/create_question_viewmodel.dart';
 
 class CreateQuestionScreen extends StatefulWidget {
   const CreateQuestionScreen({super.key});
@@ -16,9 +16,6 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
   final List<TextEditingController> _altControllers = [];
   
   int _selectedIndex = -1;
-  bool _isLoading = false;
-  
-  List<Map<String, dynamic>> _temasCadastrados = [];
   int? _selectedTemaId;
 
   final Color _primaryBlue = const Color(0xFF1E3A8A);
@@ -26,23 +23,13 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
   @override
   void initState() {
     super.initState();
-    _carregarTemas();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<CreateQuestionViewModel>().carregarTemas();
+    });
+    
     _addAlternativa();
     _addAlternativa();
     _addAlternativa();
-  }
-
-  Future<void> _carregarTemas() async {
-    try {
-      final response = await supabase.from('temas').select('id_temas, titulo');
-      if (mounted) {
-        setState(() {
-          _temasCadastrados = List<Map<String, dynamic>>.from(response);
-        });
-      }
-    } catch (e) {
-      if (mounted) _showSnackBar('Erro ao carregar lista de temas', isError: true);
-    }
   }
 
   void _addAlternativa() {
@@ -74,43 +61,31 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
       return;
     }
 
+    List<String> textosAlternativas = [];
     for (var controller in _altControllers) {
       if (controller.text.trim().isEmpty) {
         _showSnackBar('Preencha o texto de todas as alternativas.', isError: true);
         return;
       }
+      textosAlternativas.add(controller.text.trim());
     }
 
-    setState(() => _isLoading = true);
+    final viewModel = context.read<CreateQuestionViewModel>();
 
-    try {
-      final perguntaResponse = await supabase.from('perguntas').insert({
-        'id_tema': _selectedTemaId, // Pega o ID do Dropdown
-        'enunciado': _enunciadoController.text.trim(),
-        'data_criacao': DateTime.now().toIso8601String(),
-      }).select('id_pergunta').single();
+    final success = await viewModel.salvarPergunta(
+      temaId: _selectedTemaId!,
+      enunciado: _enunciadoController.text.trim(),
+      alternativas: textosAlternativas,
+      corretaIndex: _selectedIndex,
+    );
 
-      final int idPerguntaGerado = perguntaResponse['id_pergunta'];
-
-      final List<Map<String, dynamic>> alternativasData = [];
-      for (int i = 0; i < _altControllers.length; i++) {
-        alternativasData.add({
-          'id_pergunta': idPerguntaGerado,
-          'enunciado_alternativa': _altControllers[i].text.trim(),
-          'is_correta': i == _selectedIndex,
-        });
-      }
-
-      await supabase.from('alternativas').insert(alternativasData);
-
-      if (mounted) {
-        Navigator.pop(context, true);
+    if (mounted) {
+      if (success) {
         _showSnackBar('Pergunta salva com sucesso!');
+        Navigator.pop(context, true);
+      } else if (viewModel.errorMessage != null) {
+        _showSnackBar(viewModel.errorMessage!, isError: true);
       }
-    } catch (e) {
-      if (mounted) _showSnackBar('Erro ao salvar a pergunta. Tente novamente.', isError: true);
-    } finally {
-      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -129,6 +104,8 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final viewModelState = context.watch<CreateQuestionViewModel>();
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
@@ -155,9 +132,9 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
               const Text('Novo Item de Avaliação', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w500)),
               const SizedBox(height: 24),
 
-              // NOVO: Dropdown de Temas
               const Text('Tema Vinculado', style: TextStyle(fontWeight: FontWeight.w500)),
               const SizedBox(height: 8),
+              
               DropdownButtonFormField<int>(
                 value: _selectedTemaId,
                 hint: const Text('Selecione o tema da pergunta'),
@@ -170,10 +147,10 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
                     borderSide: BorderSide.none,
                   ),
                 ),
-                items: _temasCadastrados.map((tema) {
+                items: viewModelState.temas.map((tema) {
                   return DropdownMenuItem<int>(
-                    value: tema['id_temas'],
-                    child: Text(tema['titulo']),
+                    value: tema.id,
+                    child: Text(tema.titulo),
                   );
                 }).toList(),
                 onChanged: (value) {
@@ -276,17 +253,17 @@ class _CreateQuestionScreenState extends State<CreateQuestionScreen> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton.icon(
-                  onPressed: _isLoading ? null : _salvarPergunta,
+                  onPressed: viewModelState.isLoading ? null : _salvarPergunta,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: _primaryBlue,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   ),
-                  icon: _isLoading
+                  icon: viewModelState.isLoading
                       ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
                       : const Icon(Icons.save_outlined, color: Colors.white),
                   label: Text(
-                    _isLoading ? 'Salvando...' : 'Salvar Pergunta',
+                    viewModelState.isLoading ? 'Salvando...' : 'Salvar Pergunta',
                     style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
                   ),
                 ),
